@@ -107,7 +107,7 @@ Sessions are saved as JSON files in `sessions/`. A session remembers:
 - organized folder
 - each extracted SVG
 - manual filename
-- destination slot
+- XML-derived folder
 - destination path
 - status
 
