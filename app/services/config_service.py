@@ -9,6 +9,7 @@ from app.utils.paths import CONFIG_DIR
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "jpexs_path": "",
+    "output_root": "",
     "scale_percent": 400,
     "args_template": [
         "{jpexs_path}",

@@ -9,6 +9,8 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -31,7 +33,6 @@ from app.models.session_manifest import SessionManifest
 from app.services.asset_service import AssetService
 from app.services.config_service import ConfigService
 from app.services.jpexs_service import JpexsService
-from app.services.session_service import SessionService
 from app.services.xml_structure_service import XmlStructureService
 from app.ui.svg_gallery import SvgGallery
 from app.utils.paths import (
@@ -68,7 +69,6 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Ninja Shibui Parts Review MVP")
         self.config_service = ConfigService()
-        self.session_service = SessionService()
         self.asset_service = AssetService()
         self.xml_structure_service = XmlStructureService()
         self.config = self.config_service.load()
@@ -86,11 +86,9 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
 
         new_action = toolbar.addAction("New")
-        open_action = toolbar.addAction("Open Session")
-        save_action = toolbar.addAction("Save Session")
+        settings_action = toolbar.addAction("Settings")
         new_action.triggered.connect(self.new_session)
-        open_action.triggered.connect(self.open_session)
-        save_action.triggered.connect(self.save_session)
+        settings_action.triggered.connect(self.open_settings)
 
         root = QWidget()
         root_layout = QVBoxLayout(root)
@@ -100,7 +98,7 @@ class MainWindow(QMainWindow):
         main_splitter.addWidget(self._build_source_panel())
         main_splitter.addWidget(self._build_gallery_panel())
         main_splitter.addWidget(self._build_review_panel())
-        main_splitter.setSizes([330, 590, 390])
+        main_splitter.setSizes([250, 720, 360])
 
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
@@ -113,22 +111,20 @@ class MainWindow(QMainWindow):
     def _build_source_panel(self) -> QWidget:
         panel = QFrame()
         panel.setFrameShape(QFrame.StyledPanel)
+        panel.setMaximumWidth(280)
         layout = QVBoxLayout(panel)
 
-        title = QLabel("Source / Extraction")
+        title = QLabel("Source")
         title.setStyleSheet("font-weight: 600;")
         layout.addWidget(title)
 
         form = QFormLayout()
         self.swf_field = QLineEdit()
         self.xml_field = QLineEdit()
-        self.output_root_field = QLineEdit(str(WORKSPACE_DIR))
+        self.output_root_field = QLineEdit(str(self.config.get("output_root") or WORKSPACE_DIR))
         self.jpexs_field = QLineEdit()
 
         form.addRow("SWF", self._row_with_button(self.swf_field, "Choose", self.choose_swf))
-        form.addRow("XML", self._row_with_button(self.xml_field, "Choose", self.choose_xml))
-        form.addRow("Output root", self._row_with_button(self.output_root_field, "Choose", self.choose_output_root))
-        form.addRow("JPEXS", self._row_with_button(self.jpexs_field, "Choose", self.choose_jpexs))
         layout.addLayout(form)
 
         self.extract_button = QPushButton("Extract SVGs")
@@ -220,7 +216,51 @@ class MainWindow(QMainWindow):
         self.save_selected_asset()
 
     def _load_config_into_fields(self) -> None:
+        self.output_root_field.setText(str(self.config.get("output_root") or WORKSPACE_DIR))
         self.jpexs_field.setText(str(self.config.get("jpexs_path", "")))
+
+    def open_settings(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Settings")
+        layout = QVBoxLayout(dialog)
+
+        form = QFormLayout()
+        output_root = QLineEdit(self.output_root_field.text())
+        jpexs_path = QLineEdit(self.jpexs_field.text())
+        form.addRow("Output root", self._row_with_button(output_root, "Choose", lambda: self._choose_folder_for_field(output_root)))
+        form.addRow("JPEXS", self._row_with_button(jpexs_path, "Choose", lambda: self._choose_file_for_field(jpexs_path)))
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        self.output_root_field.setText(output_root.text().strip() or str(WORKSPACE_DIR))
+        self.jpexs_field.setText(jpexs_path.text().strip())
+        self.manifest.output_root = self.output_root_field.text().strip()
+        self.manifest.jpexs_path = self.jpexs_field.text().strip()
+        self._save_jpexs_config()
+        self._set_session_paths()
+        self._log("Settings updated.")
+
+    def _choose_folder_for_field(self, field: QLineEdit) -> None:
+        path = QFileDialog.getExistingDirectory(self, "Choose Output Root", field.text())
+        if path:
+            field.setText(path)
+
+    def _choose_file_for_field(self, field: QLineEdit) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Choose JPEXS executable or batch file",
+            "",
+            "Executable or Batch (*.exe *.bat *.cmd);;All Files (*)",
+        )
+        if path:
+            field.setText(path)
 
     def choose_swf(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Choose SWF", "", "SWF Files (*.swf)")
@@ -235,39 +275,6 @@ class MainWindow(QMainWindow):
         self._set_session_paths()
         self._log(f"Selected SWF: {swf_path}")
 
-    def choose_xml(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Choose JPEXS XML", "", "XML Files (*.xml)")
-        if not path:
-            return
-
-        self.xml_field.setText(path)
-        self.manifest.source_xml_path = path
-        self._log(f"Selected XML: {path}")
-
-    def choose_output_root(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Choose Output Root", self.output_root_field.text())
-        if not path:
-            return
-
-        self.output_root_field.setText(path)
-        self.manifest.output_root = path
-        self._set_session_paths()
-        self._log(f"Output root set to: {path}")
-
-    def choose_jpexs(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Choose JPEXS executable or batch file",
-            "",
-            "Executable or Batch (*.exe *.bat *.cmd);;All Files (*)",
-        )
-        if not path:
-            return
-
-        self.jpexs_field.setText(path)
-        self._save_jpexs_config()
-        self._log(f"JPEXS path set to: {path}")
-
     def new_session(self) -> None:
         self.manifest = SessionManifest(output_root=self.output_root_field.text().strip() or str(WORKSPACE_DIR))
         self.current_index = -1
@@ -278,35 +285,6 @@ class MainWindow(QMainWindow):
         self.new_name_field.clear()
         self.preview.load(bytes())
         self._log("Started a new session.")
-
-    def open_session(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Open Session", "sessions", "JSON Files (*.json)")
-        if not path:
-            return
-
-        self.manifest = self.session_service.load(Path(path))
-        self.swf_field.setText(self.manifest.source_swf_path)
-        self.xml_field.setText(self.manifest.source_xml_path)
-        self.output_root_field.setText(self.manifest.output_root or str(WORKSPACE_DIR))
-        self.jpexs_field.setText(self.manifest.jpexs_path or self.jpexs_field.text())
-        self.gallery.set_assets(self.manifest.assets)
-        self._log(f"Opened session: {path}")
-
-    def save_session(self) -> None:
-        if not self.manifest.session_name:
-            if self.swf_field.text().strip():
-                self.manifest.session_name = safe_stem(self.swf_field.text().strip())
-            else:
-                self._warn("Choose a SWF before saving the session.")
-                return
-
-        self.manifest.source_swf_path = self.swf_field.text().strip()
-        self.manifest.source_xml_path = self.xml_field.text().strip()
-        self.manifest.output_root = self.output_root_field.text().strip()
-        self.manifest.jpexs_path = self.jpexs_field.text().strip()
-        self._set_session_paths()
-        path = self.session_service.save(self.manifest)
-        self._log(f"Saved session: {path}")
 
     def extract_svgs(self) -> None:
         swf_path = Path(self.swf_field.text().strip())
@@ -381,7 +359,6 @@ class MainWindow(QMainWindow):
 
         self.xml_field.setText(str(xml_path))
         self.manifest.source_xml_path = str(xml_path)
-        self.save_session()
         self._log(f"Loaded generated XML: {xml_path}")
         return True
 
@@ -438,7 +415,6 @@ class MainWindow(QMainWindow):
             return False
 
         self.gallery.set_assets(self.manifest.assets)
-        self.save_session()
         self._log(f"Applied XML folders to {count} SVGs.")
         self.load_organized_folder()
         return True
@@ -467,7 +443,6 @@ class MainWindow(QMainWindow):
             self.apply_xml_folders(show_warnings=False)
         else:
             self._log("XML was not loaded, so organized folder grouping was skipped.")
-        self.save_session()
         self._log("Extraction complete.")
 
     @Slot(int)
@@ -506,7 +481,6 @@ class MainWindow(QMainWindow):
             return
 
         self.gallery.refresh_asset(self.current_index, asset)
-        self.save_session()
         self._log(f"Saved organized SVG: {destination}")
 
     def open_source_folder(self) -> None:
@@ -548,6 +522,7 @@ class MainWindow(QMainWindow):
         self.manifest.organized_dir = str(output_root / "organized" / session_name)
 
     def _save_jpexs_config(self) -> None:
+        self.config["output_root"] = self.output_root_field.text().strip()
         self.config["jpexs_path"] = self.jpexs_field.text().strip()
         self.config_service.save(self.config)
 

@@ -1,5 +1,6 @@
 {
   "jpexs_path": "C:/Program Files (x86)/FFDec/ffdec.bat",
+  "output_root": "C:\\Users\\louieeeee\\PartsReviewTool\\workspace",
   "scale_percent": 400,
   "args_template": [
     "{jpexs_path}",
