@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+
+workspace/raw_svg/
+workspace/organized/
+workspace/temp/
+logs/
+sessions/

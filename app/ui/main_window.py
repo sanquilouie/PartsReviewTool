@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.models.asset_record import AssetRecord
-from app.models.session_manifest import SessionManifest
+from app.models.project_state import ProjectState
 from app.services.asset_service import AssetService
 from app.services.config_service import ConfigService
 from app.services.jpexs_service import JpexsService
@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.asset_service = AssetService()
         self.xml_structure_service = XmlStructureService()
         self.config = self.config_service.load()
-        self.manifest = SessionManifest(output_root=str(WORKSPACE_DIR))
+        self.manifest = ProjectState(output_root=str(WORKSPACE_DIR))
         self.current_index = -1
         self.extraction_thread: QThread | None = None
 
@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
         self._log(f"Selected SWF: {swf_path}")
 
     def new_session(self) -> None:
-        self.manifest = SessionManifest(output_root=self.output_root_field.text().strip() or str(WORKSPACE_DIR))
+        self.manifest = ProjectState(output_root=self.output_root_field.text().strip() or str(WORKSPACE_DIR))
         self.current_index = -1
         self.swf_field.clear()
         self.xml_field.clear()
