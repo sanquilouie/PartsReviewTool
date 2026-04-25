@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
         self.extraction_thread: QThread | None = None
 
         self._build_ui()
+        self._build_shortcuts()
         self._load_config_into_fields()
         self._log("Ready.")
 
@@ -205,11 +206,16 @@ class MainWindow(QMainWindow):
         row = QWidget()
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
-        for name in ("skin", "layer_01", "layer_02"):
-            button = QPushButton(name)
+        for name, shortcut in (("skin", "F1"), ("layer_01", "F2"), ("layer_02", "F3")):
+            button = QPushButton(f"{name} ({shortcut})")
             button.clicked.connect(lambda checked=False, value=name: self.quick_save_filename(value))
             layout.addWidget(button)
         return row
+
+    def _build_shortcuts(self) -> None:
+        for key, name in (("F1", "skin"), ("F2", "layer_01"), ("F3", "layer_02")):
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.activated.connect(lambda value=name: self.quick_save_filename(value))
 
     def quick_save_filename(self, name: str) -> None:
         self.new_name_field.setText(f"{name}.svg")
