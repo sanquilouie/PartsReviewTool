@@ -1,0 +1,21 @@
+{
+  "jpexs_path": "C:/Program Files (x86)/FFDec/ffdec.bat",
+  "scale_percent": 400,
+  "args_template": [
+    "{jpexs_path}",
+    "-format",
+    "shape:svg",
+    "-zoom",
+    "{scale_factor}",
+    "-export",
+    "shape",
+    "{output_dir}",
+    "{swf_path}"
+  ],
+  "xml_args_template": [
+    "{jpexs_path}",
+    "-swf2xml",
+    "{swf_path}",
+    "{xml_path}"
+  ]
+}
