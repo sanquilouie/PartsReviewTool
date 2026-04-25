@@ -131,9 +131,9 @@ class MainWindow(QMainWindow):
         self.extract_button.clicked.connect(self.extract_svgs)
         layout.addWidget(self.extract_button)
 
-        self.load_organized_button = QPushButton("Load Organized Folder")
-        self.load_organized_button.clicked.connect(self.load_organized_folder)
-        layout.addWidget(self.load_organized_button)
+        self.choose_view_folder_button = QPushButton("Choose Folder to View")
+        self.choose_view_folder_button.clicked.connect(self.choose_folder_to_view)
+        layout.addWidget(self.choose_view_folder_button)
 
         layout.addStretch(1)
         return panel
@@ -369,19 +369,28 @@ class MainWindow(QMainWindow):
         self.gallery.set_assets(self.manifest.assets)
         self._log(f"Loaded {len(self.manifest.assets)} SVG files from {extracted_dir}")
 
-    def load_organized_folder(self) -> None:
+    def choose_folder_to_view(self) -> None:
         self._set_session_paths()
-        organized_dir = Path(self.manifest.organized_dir)
-        self.manifest.assets = self.asset_service.scan_svgs(organized_dir)
+        start_dir = self.manifest.organized_dir or str(ORGANIZED_DIR)
+        folder = QFileDialog.getExistingDirectory(self, "Choose Folder to View", start_dir)
+        if not folder:
+            return
+
+        self.load_view_folder(Path(folder))
+
+    def load_view_folder(self, folder: Path) -> None:
+        self.manifest.assets = self.asset_service.scan_svgs(folder)
         for asset in self.manifest.assets:
-            relative = Path(asset.source_path).relative_to(organized_dir)
+            relative = Path(asset.source_path).relative_to(folder)
             if len(relative.parts) > 1:
                 asset.destination_slot = relative.parts[0]
+            else:
+                asset.destination_slot = folder.name
             asset.new_filename = Path(asset.source_path).name
             asset.destination_path = asset.source_path
             asset.status = "done"
         self.gallery.set_assets(self.manifest.assets)
-        self._log(f"Loaded {len(self.manifest.assets)} SVG files from {organized_dir}")
+        self._log(f"Loaded {len(self.manifest.assets)} SVG files from {folder}")
 
     def apply_xml_folders(self, show_warnings: bool = True) -> bool:
         xml_path = Path(self.xml_field.text().strip())
@@ -416,7 +425,7 @@ class MainWindow(QMainWindow):
 
         self.gallery.set_assets(self.manifest.assets)
         self._log(f"Applied XML folders to {count} SVGs.")
-        self.load_organized_folder()
+        self.load_view_folder(Path(self.manifest.organized_dir))
         return True
 
     @Slot(object, object)

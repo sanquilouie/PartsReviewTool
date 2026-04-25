@@ -14,7 +14,7 @@ This app does:
 - preview the selected SVG
 - manually enter a new filename
 - quickly save common filenames: `skin.svg`, `layer_01.svg`, `layer_02.svg`
-- view the organized folder
+- choose any folder to view SVGs recursively
 - save the renamed SVG into the organized folder structure
 
 This app does not do PNG export, Illustrator automation, Unity import, semantic filename guessing, or automatic classification.
@@ -123,7 +123,7 @@ workspace/organized/<session>/<symbol_name>/<shape_id>.svg
 
 This is structural grouping from the XML, not filename guessing. The app preserves the original SVG filename so you can still manually rename parts during review.
 
-After `Extract SVGs`, the app extracts raw SVGs, loads or generates the matching XML, applies XML folder grouping, and switches the gallery to the organized folder view. Use `Load Organized Folder` to review the organized structure again.
+After `Extract SVGs`, the app extracts raw SVGs, loads or generates the matching XML, applies XML folder grouping, and switches the gallery to the organized folder view. Use `Choose Folder to View` to review any organized folder or subfolder.
 
 ## Later Illustrator Integration
 
