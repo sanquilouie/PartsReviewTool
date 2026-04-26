@@ -1,0 +1,88 @@
+{
+  "slots": {
+    "upper_body": {
+      "template": "tpl_upper_body.ai",
+      "layers": ["skin", "layer_01", "layer_02"],
+      "output": "upper_body.ai",
+      "size": [768, 768]
+    },
+    "lower_body": {
+      "template": "tpl_lower_body.ai",
+      "layers": ["layer_01"],
+      "output": "lower_body.ai",
+      "size": [768, 768]
+    },
+    "right_upper_leg": {
+      "template": "tpl_right_upper_leg.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "right_upper_leg.ai",
+      "size": [512, 512]
+    },
+    "left_upper_leg": {
+      "template": "tpl_left_upper_leg.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "left_upper_leg.ai",
+      "size": [512, 512]
+    },
+    "right_lower_leg": {
+      "template": "tpl_right_lower_leg.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "right_lower_leg.ai",
+      "size": [512, 512]
+    },
+    "left_lower_leg": {
+      "template": "tpl_left_lower_leg.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "left_lower_leg.ai",
+      "size": [512, 512]
+    },
+    "right_upper_arm": {
+      "template": "tpl_right_upper_arm.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "right_upper_arm.ai",
+      "size": [512, 512]
+    },
+    "left_upper_arm": {
+      "template": "tpl_left_upper_arm.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "left_upper_arm.ai",
+      "size": [512, 512]
+    },
+    "right_lower_arm": {
+      "template": "tpl_right_lower_arm.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "right_lower_arm.ai",
+      "size": [512, 512]
+    },
+    "left_lower_arm": {
+      "template": "tpl_left_lower_arm.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "left_lower_arm.ai",
+      "size": [512, 512]
+    },
+    "right_hand": {
+      "template": "tpl_right_hand.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "right_hand.ai",
+      "size": [384, 384]
+    },
+    "left_hand": {
+      "template": "tpl_left_hand.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "left_hand.ai",
+      "size": [384, 384]
+    },
+    "right_shoe": {
+      "template": "tpl_right_shoe.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "right_shoe.ai",
+      "size": [384, 384]
+    },
+    "left_shoe": {
+      "template": "tpl_left_shoe.ai",
+      "layers": ["skin", "layer_01"],
+      "output": "left_shoe.ai",
+      "size": [384, 384]
+    }
+  }
+}

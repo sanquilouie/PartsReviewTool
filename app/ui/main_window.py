@@ -30,12 +30,15 @@ from PySide6.QtWidgets import (
 
 from app.models.asset_record import AssetRecord
 from app.models.project_state import ProjectState
+from app.services.ai_builder_service import AiBuilderService
 from app.services.asset_service import AssetService
 from app.services.config_service import ConfigService
+from app.services.illustrator_service import IllustratorService
 from app.services.jpexs_service import JpexsService
 from app.services.xml_structure_service import XmlStructureService
 from app.ui.svg_gallery import SvgGallery
 from app.utils.paths import (
+    GENERATED_AI_DIR,
     ORGANIZED_DIR,
     RAW_SVG_DIR,
     WORKSPACE_DIR,
@@ -70,6 +73,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Ninja Shibui Parts Review MVP")
         self.config_service = ConfigService()
         self.asset_service = AssetService()
+        self.ai_builder_service = AiBuilderService()
+        self.illustrator_service = IllustratorService()
         self.xml_structure_service = XmlStructureService()
         self.config = self.config_service.load()
         self.manifest = ProjectState(output_root=str(WORKSPACE_DIR))
@@ -124,6 +129,9 @@ class MainWindow(QMainWindow):
         self.xml_field = QLineEdit()
         self.output_root_field = QLineEdit(str(self.config.get("output_root") or WORKSPACE_DIR))
         self.jpexs_field = QLineEdit()
+        self.illustrator_field = QLineEdit()
+        self.templates_folder_field = QLineEdit()
+        self.generated_ai_root_field = QLineEdit()
 
         form.addRow("SWF", self._row_with_button(self.swf_field, "Choose", self.choose_swf))
         layout.addLayout(form)
@@ -135,6 +143,18 @@ class MainWindow(QMainWindow):
         self.choose_view_folder_button = QPushButton("Choose Folder to View")
         self.choose_view_folder_button.clicked.connect(self.choose_folder_to_view)
         layout.addWidget(self.choose_view_folder_button)
+
+        self.build_ai_button = QPushButton("Build AI Files")
+        self.build_ai_button.clicked.connect(self.build_ai_files)
+        layout.addWidget(self.build_ai_button)
+
+        self.open_generated_folder_button = QPushButton("Open Generated AI Folder")
+        self.open_generated_folder_button.clicked.connect(self.open_generated_ai_folder)
+        layout.addWidget(self.open_generated_folder_button)
+
+        self.open_all_ai_button = QPushButton("Open All AI in Illustrator")
+        self.open_all_ai_button.clicked.connect(self.open_all_ai_in_illustrator)
+        layout.addWidget(self.open_all_ai_button)
 
         layout.addStretch(1)
         return panel
@@ -224,6 +244,9 @@ class MainWindow(QMainWindow):
     def _load_config_into_fields(self) -> None:
         self.output_root_field.setText(str(self.config.get("output_root") or WORKSPACE_DIR))
         self.jpexs_field.setText(str(self.config.get("jpexs_path", "")))
+        self.illustrator_field.setText(str(self.config.get("illustrator_path", "")))
+        self.templates_folder_field.setText(str(self.config.get("templates_folder", "")))
+        self.generated_ai_root_field.setText(str(self.config.get("generated_ai_root") or GENERATED_AI_DIR))
 
     def open_settings(self) -> None:
         dialog = QDialog(self)
@@ -233,8 +256,14 @@ class MainWindow(QMainWindow):
         form = QFormLayout()
         output_root = QLineEdit(self.output_root_field.text())
         jpexs_path = QLineEdit(self.jpexs_field.text())
+        illustrator_path = QLineEdit(self.illustrator_field.text())
+        templates_folder = QLineEdit(self.templates_folder_field.text())
+        generated_ai_root = QLineEdit(self.generated_ai_root_field.text())
         form.addRow("Output root", self._row_with_button(output_root, "Choose", lambda: self._choose_folder_for_field(output_root)))
-        form.addRow("JPEXS", self._row_with_button(jpexs_path, "Choose", lambda: self._choose_file_for_field(jpexs_path)))
+        form.addRow("JPEXS", self._row_with_button(jpexs_path, "Choose", lambda: self._choose_file_for_field(jpexs_path, "Choose JPEXS executable or batch file")))
+        form.addRow("Illustrator", self._row_with_button(illustrator_path, "Choose", lambda: self._choose_file_for_field(illustrator_path, "Choose Illustrator executable")))
+        form.addRow("Templates folder", self._row_with_button(templates_folder, "Choose", lambda: self._choose_folder_for_field(templates_folder)))
+        form.addRow("Generated AI root", self._row_with_button(generated_ai_root, "Choose", lambda: self._choose_folder_for_field(generated_ai_root)))
         layout.addLayout(form)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -247,6 +276,9 @@ class MainWindow(QMainWindow):
 
         self.output_root_field.setText(output_root.text().strip() or str(WORKSPACE_DIR))
         self.jpexs_field.setText(jpexs_path.text().strip())
+        self.illustrator_field.setText(illustrator_path.text().strip())
+        self.templates_folder_field.setText(templates_folder.text().strip())
+        self.generated_ai_root_field.setText(generated_ai_root.text().strip() or str(GENERATED_AI_DIR))
         self.manifest.output_root = self.output_root_field.text().strip()
         self.manifest.jpexs_path = self.jpexs_field.text().strip()
         self._save_jpexs_config()
@@ -258,10 +290,10 @@ class MainWindow(QMainWindow):
         if path:
             field.setText(path)
 
-    def _choose_file_for_field(self, field: QLineEdit) -> None:
+    def _choose_file_for_field(self, field: QLineEdit, title: str) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Choose JPEXS executable or batch file",
+            title,
             "",
             "Executable or Batch (*.exe *.bat *.cmd);;All Files (*)",
         )
@@ -385,7 +417,9 @@ class MainWindow(QMainWindow):
         self.load_view_folder(Path(folder))
 
     def load_view_folder(self, folder: Path) -> None:
+        self._set_current_set_from_folder(folder)
         self.manifest.assets = self.asset_service.scan_svgs(folder)
+        self.manifest.current_view_folder = str(folder)
         for asset in self.manifest.assets:
             relative = Path(asset.source_path).relative_to(folder)
             if len(relative.parts) > 1:
@@ -498,11 +532,87 @@ class MainWindow(QMainWindow):
         self.gallery.refresh_asset(self.current_index, asset)
         self._log(f"Saved organized SVG: {destination}")
 
+    def build_ai_files(self) -> None:
+        self._save_jpexs_config()
+        self._set_session_paths()
+
+        organized_folder = self._build_source_folder()
+        templates_folder = Path(self.templates_folder_field.text().strip())
+        generated_ai_root = Path(self.generated_ai_root_field.text().strip() or GENERATED_AI_DIR)
+        illustrator_path = Path(self.illustrator_field.text().strip())
+
+        if not templates_folder.exists():
+            self._warn("Choose a valid templates folder in Settings.")
+            return
+        if not illustrator_path.exists():
+            self._warn("Choose a valid Illustrator executable in Settings.")
+            return
+
+        plan = self.ai_builder_service.create_build_plan(
+            organized_folder,
+            templates_folder,
+            generated_ai_root,
+        )
+        for warning in plan.warnings:
+            self._log(f"AI build warning: {warning}")
+
+        try:
+            script_path = self.illustrator_service.build_ai_files(illustrator_path, plan)
+        except Exception as error:
+            self._warn(str(error))
+            self._log(f"Build AI files failed: {error}")
+            return
+
+        self.manifest.generated_ai_dir = str(plan.generated_set_dir)
+        self._log(f"Sent {len(plan.jobs)} AI build jobs to Illustrator.")
+        self._log(f"Generated AI folder: {plan.generated_set_dir}")
+        self._log(f"Illustrator JSX: {script_path}")
+
+    def open_generated_ai_folder(self) -> None:
+        folder = Path(self.manifest.generated_ai_dir) if self.manifest.generated_ai_dir else self._default_generated_set_dir()
+        folder.mkdir(parents=True, exist_ok=True)
+        self._open_folder(folder)
+        if not any(folder.glob("*.ai")):
+            self._log(f"No generated AI files found in {folder}. Click Build AI Files first.")
+
+    def open_all_ai_in_illustrator(self) -> None:
+        self._save_jpexs_config()
+
+        illustrator_path = Path(self.illustrator_field.text().strip())
+        generated_folder = Path(self.manifest.generated_ai_dir) if self.manifest.generated_ai_dir else self._default_generated_set_dir()
+
+        try:
+            ai_files = self.illustrator_service.open_ai_files(illustrator_path, generated_folder)
+        except Exception as error:
+            self._warn(str(error))
+            self._log(f"Open all AI failed: {error}")
+            return
+
+        self._log(f"Opened {len(ai_files)} AI files in Illustrator.")
+
     def open_source_folder(self) -> None:
         asset = self._current_asset()
         if asset is None:
             return
         self._open_folder(Path(asset.source_path).parent)
+
+    def _build_source_folder(self) -> Path:
+        folder = Path(self.manifest.current_view_folder) if self.manifest.current_view_folder else Path(self.manifest.organized_dir)
+        if folder.name in self.ai_builder_service.load_slot_config():
+            return folder.parent
+        return folder
+
+    def _set_current_set_from_folder(self, folder: Path) -> None:
+        slots = self.ai_builder_service.load_slot_config()
+        set_folder = folder.parent if folder.name in slots else folder
+        if set_folder.name:
+            self.manifest.session_name = set_folder.name
+            self.manifest.organized_dir = str(set_folder)
+            self.manifest.generated_ai_dir = str(Path(self.generated_ai_root_field.text().strip() or GENERATED_AI_DIR) / set_folder.name)
+
+    def _default_generated_set_dir(self) -> Path:
+        set_name = Path(self._build_source_folder()).name or self.manifest.session_name or "set"
+        return Path(self.generated_ai_root_field.text().strip() or GENERATED_AI_DIR) / set_name
 
     def _current_asset(self) -> AssetRecord | None:
         if self.current_index < 0 or self.current_index >= len(self.manifest.assets):
@@ -535,10 +645,14 @@ class MainWindow(QMainWindow):
         self.manifest.output_root = str(output_root)
         self.manifest.extracted_dir = str(output_root / "raw_svg" / session_name / "extracted")
         self.manifest.organized_dir = str(output_root / "organized" / session_name)
+        self.manifest.generated_ai_dir = str(Path(self.generated_ai_root_field.text().strip() or GENERATED_AI_DIR) / session_name)
 
     def _save_jpexs_config(self) -> None:
         self.config["output_root"] = self.output_root_field.text().strip()
         self.config["jpexs_path"] = self.jpexs_field.text().strip()
+        self.config["illustrator_path"] = self.illustrator_field.text().strip()
+        self.config["templates_folder"] = self.templates_folder_field.text().strip()
+        self.config["generated_ai_root"] = self.generated_ai_root_field.text().strip()
         self.config_service.save(self.config)
 
     def _detect_xml_for_swf(self, swf_path: Path) -> bool:

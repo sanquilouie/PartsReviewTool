@@ -1,6 +1,9 @@
 {
   "jpexs_path": "C:/Program Files (x86)/FFDec/ffdec.bat",
   "output_root": "C:\\Users\\louieeeee\\PartsReviewTool\\workspace",
+  "illustrator_path": "C:/Program Files/Adobe/Adobe Illustrator 2026/Support Files/Contents/Windows/Illustrator.exe",
+  "templates_folder": "C:/Users/louieeeee/PartsReviewTool/templates_ai",
+  "generated_ai_root": "C:\\Users\\louieeeee\\PartsReviewTool\\workspace\\generated_ai",
   "scale_percent": 400,
   "args_template": [
     "{jpexs_path}",

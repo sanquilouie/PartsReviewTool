@@ -3,6 +3,7 @@ __pycache__/
 
 workspace/raw_svg/
 workspace/organized/
+workspace/generated_ai/
 workspace/temp/
 logs/
 sessions/

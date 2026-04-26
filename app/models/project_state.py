@@ -14,4 +14,6 @@ class ProjectState:
     jpexs_path: str = ""
     extracted_dir: str = ""
     organized_dir: str = ""
+    generated_ai_dir: str = ""
+    current_view_folder: str = ""
     assets: list[AssetRecord] = field(default_factory=list)

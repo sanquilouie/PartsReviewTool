@@ -9,10 +9,11 @@ CONFIG_DIR = APP_ROOT / "config"
 WORKSPACE_DIR = APP_ROOT / "workspace"
 RAW_SVG_DIR = WORKSPACE_DIR / "raw_svg"
 ORGANIZED_DIR = WORKSPACE_DIR / "organized"
+GENERATED_AI_DIR = WORKSPACE_DIR / "generated_ai"
 
 
 def ensure_base_dirs() -> None:
-    for path in (CONFIG_DIR, RAW_SVG_DIR, ORGANIZED_DIR):
+    for path in (CONFIG_DIR, RAW_SVG_DIR, ORGANIZED_DIR, GENERATED_AI_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
 
